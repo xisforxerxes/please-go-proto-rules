@@ -32,6 +32,10 @@ DefaultValue = grpc_go_plugin
 ConfigKey = GrpcPlugin
 DefaultValue = grpc_go_plugin
 
+[PluginConfig "connect_plugin"]
+ConfigKey = ConnectPlugin
+DefaultValue = grpc_go_plugin
+
 [PluginConfig "proto_dep"]
 ConfigKey = ProtoDep
 DefaultValue = //third_party/go:protobuf
@@ -39,3 +43,7 @@ DefaultValue = //third_party/go:protobuf
 [PluginConfig "grpc_dep"]
 ConfigKey = GrpcDep
 DefaultValue = //third_party/go:grpc
+
+[PluginConfig "connect_dep"]
+ConfigKey = ConnectDep
+DefaultValue = //third_party/go:connect
