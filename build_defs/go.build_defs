@@ -6,13 +6,14 @@ subinclude(
 )
 
 # TODO(jpoole): Figure out how to apply the mapping stuff to the grpc plugin as well
-def _go_path_mapping():
+def _go_path_mapping(plugin_out_arg:str=''):
     """Used to update the Go path mapping; by default it doesn't really import in the way we want."""
     def _map_go_paths(rule_name):
         mapping = ',M'.join(get_labels(rule_name, 'proto:go-map:'))
         cmd = get_command(rule_name)
         cmd = cmd.replace('--go_out=', f'--go_out=M{mapping}:')
-        cmd = cmd.replace('--go-grpc_out=', f'--go-grpc_out=M{mapping}:')
+        if plugin_out_arg:
+            cmd = cmd.replace(f'--{plugin_out_arg}=', f'--{plugin_out_arg}=M{mapping}:')
         set_command(rule_name, cmd)
     return _map_go_paths
 
@@ -128,7 +129,7 @@ def go_grpc_library(name:str, srcs:list, deps:list=[], visibility:list=None, lab
         root_dir = root_dir,
         deps = deps,
         visibility = visibility,
-        pre_build = _go_path_mapping(),
+        pre_build = _go_path_mapping("go-grpc_out"),
     )
 
     return go_library(
@@ -182,7 +183,7 @@ def go_connect_library(name:str, srcs:list, deps:list=[], visibility:list=None, 
         root_dir = root_dir,
         deps = deps,
         visibility = visibility,
-        pre_build = _go_path_mapping(),
+        pre_build = _go_path_mapping("connect-go_out"),
     )
 
     return go_library(
