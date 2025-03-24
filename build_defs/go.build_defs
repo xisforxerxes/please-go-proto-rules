@@ -47,7 +47,7 @@ def go_proto_library(name:str, srcs:list, deps:list=[], visibility:list=None, la
     Args:
       name (str): Name of the rule
       srcs (list): Input .proto files.
-      deps (list): Dependencies (other grpc_library or proto_library rules)
+      deps (list): Dependencies (other proto language library rules, e.g. grpc_library or proto_library)
       visibility (list): Visibility specification for the rule.
       labels (list): List of labels to apply to this rule.
       test_only (bool): If True, this rule can only be used by test rules.
@@ -95,7 +95,7 @@ def go_grpc_library(name:str, srcs:list, deps:list=[], visibility:list=None, lab
     Args:
       name (str): Name of the rule
       srcs (list): Input .proto files.
-      deps (list): Dependencies (other grpc_library or proto_library rules)
+      deps (list): Dependencies (other proto language library rules, e.g. grpc_library or proto_library)
       visibility (list): Visibility specification for the rule.
       labels (list): List of labels to apply to this rule.
       test_only (bool): If True, this rule can only be used by test rules.
@@ -148,7 +148,7 @@ def go_connect_library(name:str, srcs:list, deps:list=[], visibility:list=None, 
     Args:
       name (str): Name of the rule
       srcs (list): Input .proto files.
-      deps (list): Dependencies (other connect_library or proto_library rules)
+      deps (list): Dependencies (other proto language library rules, e.g. grpc_library or proto_library)
       visibility (list): Visibility specification for the rule.
       labels (list): List of labels to apply to this rule.
       test_only (bool): If True, this rule can only be used by test rules.
