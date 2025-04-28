@@ -6,6 +6,7 @@ proto_build_defs(
     proto_languages = {
         "grpc_language": ["go_grpc_language"],
         "proto_language": ["go_proto_language"],
+        "connect_language": ["go_connect_language"],
     },
     visibility = ["PUBLIC"],
 )

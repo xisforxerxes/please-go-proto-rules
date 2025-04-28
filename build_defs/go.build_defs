@@ -6,13 +6,14 @@ subinclude(
 )
 
 # TODO(jpoole): Figure out how to apply the mapping stuff to the grpc plugin as well
-def _go_path_mapping():
+def _go_path_mapping(plugin_out_arg:str=''):
     """Used to update the Go path mapping; by default it doesn't really import in the way we want."""
     def _map_go_paths(rule_name):
         mapping = ',M'.join(get_labels(rule_name, 'proto:go-map:'))
         cmd = get_command(rule_name)
         cmd = cmd.replace('--go_out=', f'--go_out=M{mapping}:')
-        cmd = cmd.replace('--go-grpc_out=', f'--go-grpc_out=M{mapping}:')
+        if plugin_out_arg:
+            cmd = cmd.replace(f'--{plugin_out_arg}=', f'--{plugin_out_arg}=M{mapping}:')
         set_command(rule_name, cmd)
     return _map_go_paths
 
@@ -41,13 +42,13 @@ def _import_path(root_dir):
 
 
 def go_proto_library(name:str, srcs:list, deps:list=[], visibility:list=None, labels:list&features&tags=[],
-                      test_only:bool&testonly=False, root_dir:str='', protoc_flags:list=[], additional_context:dict=None):
+                     test_only:bool&testonly=False, root_dir:str='', protoc_flags:list=[], additional_context:dict=None):
     """Compile a .proto file to generate code for golang.
 
     Args:
       name (str): Name of the rule
       srcs (list): Input .proto files.
-      deps (list): Dependencies (other grpc_library or proto_library rules)
+      deps (list): Dependencies (other proto language library rules, e.g. grpc_library or proto_library)
       visibility (list): Visibility specification for the rule.
       labels (list): List of labels to apply to this rule.
       test_only (bool): If True, this rule can only be used by test rules.
@@ -89,13 +90,13 @@ def go_proto_library(name:str, srcs:list, deps:list=[], visibility:list=None, la
     )
 
 def go_grpc_library(name:str, srcs:list, deps:list=[], visibility:list=None, labels:list&features&tags=[],
-                      test_only:bool&testonly=False, root_dir:str='', protoc_flags:list=[], additional_context:dict=None):
+                    test_only:bool&testonly=False, root_dir:str='', protoc_flags:list=[], additional_context:dict=None):
     """Defines a rule for a go grpc library.
 
     Args:
       name (str): Name of the rule
       srcs (list): Input .proto files.
-      deps (list): Dependencies (other grpc_library or proto_library rules)
+      deps (list): Dependencies (other proto language library rules, e.g. grpc_library or proto_library)
       visibility (list): Visibility specification for the rule.
       labels (list): List of labels to apply to this rule.
       test_only (bool): If True, this rule can only be used by test rules.
@@ -128,7 +129,7 @@ def go_grpc_library(name:str, srcs:list, deps:list=[], visibility:list=None, lab
         root_dir = root_dir,
         deps = deps,
         visibility = visibility,
-        pre_build = _go_path_mapping(),
+        pre_build = _go_path_mapping("go-grpc_out"),
     )
 
     return go_library(
@@ -141,6 +142,70 @@ def go_grpc_library(name:str, srcs:list, deps:list=[], visibility:list=None, lab
         import_path = _import_path(root_dir),
     )
 
+def go_connect_library(name:str, srcs:list, deps:list=[], visibility:list=None, labels:list&features&tags=[],
+                       test_only:bool&testonly=False, root_dir:str='', protoc_flags:list=[], additional_context:dict=None):
+    """Defines a rule for a go connect library.
+
+    Args:
+      name (str): Name of the rule
+      srcs (list): Input .proto files.
+      deps (list): Dependencies (other proto language library rules, e.g. grpc_library or proto_library)
+      visibility (list): Visibility specification for the rule.
+      labels (list): List of labels to apply to this rule.
+      test_only (bool): If True, this rule can only be used by test rules.
+      root_dir (str): The directory that the protos are compiled relative to. Useful if your
+                      proto files have import statements that are not relative to the repo root.
+      protoc_flags (list): Additional flags to pass to protoc.
+      additional_context (dict): This is unused. It will error if set
+    """
+    if additional_context:
+        fail("additional_context is not used in this rule")
+    deps += [CONFIG.GO_PROTO.PROTO_DEP, CONFIG.GO_PROTO.CONNECT_DEP]
+    tools = {'go': [CONFIG.GO_PROTO.PLUGIN], "connect_go": [CONFIG.GO_PROTO.CONNECT_PLUGIN]}
+
+    protoc = protoc_rule(
+        name = name,
+        srcs = srcs,
+        language = "go",
+        tools = tools,
+        protoc_flags = protoc_flags,
+        plugin_flags = [
+            '--plugin=protoc-gen-go="`which $TOOLS_GO`"',
+            '--go_out="$OUT_DIR"',
+            '--go_opt=paths=source_relative',
+            '--plugin=protoc-gen-connect-go="$(which $TOOLS_CONNECT_GO)"',
+            '--connect-go_out="$OUT_DIR"',
+            '--connect-go_opt=paths=source_relative',
+            '--connect-go_opt=package_suffix=',
+        ],
+        labels = labels + _go_mapping_labels(srcs, root_dir),
+        test_only = test_only,
+        root_dir = root_dir,
+        deps = deps,
+        visibility = visibility,
+        pre_build = _go_path_mapping("connect-go_out"),
+    )
+
+    return go_library(
+        name = f"_{name}#go",
+        srcs = [protoc],
+        deps = deps,
+        test_only = test_only,
+        labels = labels,
+        visibility = visibility,
+        import_path = _import_path(root_dir),
+    )
+
+def go_proto_language():
+    """A rule for a proto language for go
+    see https://github.com/please-build/proto-rules/blob/master/build_defs/sdk/sdk.build_defs for more info
+    """
+    return proto_language(
+        language = "go",
+        build_def = go_proto_library,
+        additional_provides={"go_src": "go_srcs", "modinfo": "go_modinfo"},
+    )
+
 def go_grpc_language():
     """A rule for a grpc language for go
     see https://github.com/please-build/proto-rules/blob/master/build_defs/sdk/sdk.build_defs for more info
@@ -151,12 +216,12 @@ def go_grpc_language():
         additional_provides={"go_src": "go_srcs", "modinfo": "go_modinfo"},
     )
 
-def go_proto_language():
-    """A rule for a proto language for go
+def go_connect_language():
+    """A rule for a connect language for go
     see https://github.com/please-build/proto-rules/blob/master/build_defs/sdk/sdk.build_defs for more info
     """
     return proto_language(
         language = "go",
-        build_def = go_proto_library,
+        build_def = go_connect_library,
         additional_provides={"go_src": "go_srcs", "modinfo": "go_modinfo"},
     )
